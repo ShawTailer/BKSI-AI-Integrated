@@ -1,0 +1,1536 @@
+<div class="uv-highlight-component" data-thread-id="{{ threadId }}"></div> 
+<script>
+const CONFIG = {
+    apiEndpoint: "http://127.0.0.1:8210",
+    "bksi-api-key": "d59f6e4ab0479400059110462741370f4b0962a01e2d3d367312f1bc0060b8ff",
+    buttonText: "Trợ giúp AI",
+    styles: {
+        button: {
+            "background-color": "rgb(131, 144, 240);", 
+            "color": "white",             
+            "padding": "8px 15px",        
+            "border": "none",            
+            "border-radius": "4px",        
+            "cursor": "pointer",       
+            "font-weight": "bold"
+        },
+        highlightWrapper: {
+            "border": "1px solid #ccc",   
+            "border-radius": "8px",        
+            "padding": "12px",            
+            "background-color": "#ffffff"
+        },
+        highlightTitle: {
+            "color": "#222226",           
+            "font-size": "20px",      
+            "font-weight": "600",       
+            "line-height": "16px",         
+            "margin-top": "10px",      
+            "font-family": "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+        },
+        highlightTag: {
+            "background-color": "CornflowerBlue",
+            "color": "white", 
+            "padding": "2px 5px",
+            "border-radius": "5px", 
+            "display": "inline-flex",
+            "align-items": "center"
+        },
+        removeButton: {
+            "background": "none",
+            "border": "none",
+            "color": "white",
+            "font-weight": "bold",
+            "margin-left": "5px", 
+            "cursor": "pointer"
+        },
+        problematicEntityItem: {
+            "padding": "5px",
+            "border-bottom": "1px solid #eee",
+            "display": "flex",
+            "justify-content": "space-between",
+            "align-items": "center"
+        },
+        undoButton: {
+            "background": "none",
+            "border": "none",
+            "color": "#dc3545",
+            "font-weight": "bold",
+            "cursor": "pointer",
+            "margin-left": "5px",
+            "font-size": "16px"
+        }
+    }
+};
+{# class AuthService {
+    constructor() {
+        this.currentToken = null;
+        this.tokenExpiry = null;
+        this.renewalInterval = 14 * 60 * 1000; // 14 minutes
+        this.isInitialized = false;
+        this.renewalTimer = null;
+    }
+
+    async initialize() {
+        if (this.isInitialized) return true;
+        
+        try {
+            console.log("Starting authentication initialization...");
+            
+            // Attempt signup (ignore failures)
+            await this.signup().catch(e => console.log("Signup attempt completed with warnings"));
+            
+            // Attempt login and token acquisition
+            await this.login();
+            
+            // Verify we have a token
+            if (!this.currentToken) {
+                throw new Error("No token received after login");
+            }
+            
+            this.startTokenRenewal();
+            this.isInitialized = true;
+            console.log("Authentication initialized successfully");
+            return true;
+            
+        } catch (error) {
+            console.error("Auth initialization failed:", error);
+            this.isInitialized = false;
+            throw error;
+        }
+    }
+
+    async signup() {
+        console.log("Attempting signup...");
+        const response = await fetch(`${CONFIG.apiEndpoint}/signup`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(CONFIG.authCredentials),
+        
+        });
+
+        console.log(`Signup response: ${response.status} ${response.statusText}`);
+        
+        // Only throw for unexpected errors (not 400/409)
+        if (!response.ok && ![400, 409].includes(response.status)) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Signup failed');
+        }
+    }
+
+    async login() {
+        console.log("Attempting login...");
+        const response = await fetch(`${CONFIG.apiEndpoint}/login`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(CONFIG.authCredentials),
+        });
+
+        
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'Login failed');
+        }
+
+        // Extract cookies from response
+        const cookies = response.headers.get('set-cookie');
+        console.log("Received cookies:", cookies);
+        
+        return this.getNewToken();
+    }
+
+    async getNewToken() {
+        console.log("Requesting new token...");
+        const response = await fetch(`${CONFIG.apiEndpoint}/key`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'include'
+        });
+
+        console.log(`Token response: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+            throw new Error(`Token request failed: ${response.status}`);
+        }
+
+        const data = await response.json().catch(e => {
+            throw new Error("Invalid token response format");
+        });
+
+        if (!data.token) {
+            throw new Error("No token in response");
+        }
+
+        this.currentToken = data.token;
+        this.tokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
+        console.log("Token received, expires at:", this.tokenExpiry);
+        return this.currentToken;
+    }
+
+    getAuthHeaders() {
+        if (!this.currentToken) {
+            console.warn("No token available - using minimal headers");
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+        }
+        
+        return {
+            'bksi-api-key': this.currentToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        };
+    }
+
+    startTokenRenewal() {
+        this.clearTokenRenewal();
+        
+        this.renewalTimer = setInterval(async () => {
+            try {
+                console.log("Starting token renewal...");
+                await this.getNewToken();
+                console.log("Token renewed successfully");
+            } catch (error) {
+                console.error("Token renewal failed:", error);
+                try {
+                    await this.login();
+                } catch (loginError) {
+                    console.error("Re-login failed:", loginError);
+                }
+            }
+        }, this.renewalInterval);
+    }
+
+    clearTokenRenewal() {
+        if (this.renewalTimer) {
+            clearInterval(this.renewalTimer);
+            this.renewalTimer = null;
+        }
+    }
+
+    isAuthenticated() {
+        return this.isInitialized && !!this.currentToken;
+    }
+
+    async ensureAuthenticated() {
+        if (this.isAuthenticated()) return true;
+        
+        try {
+            return await this.initialize();
+        } catch (error) {
+            console.error("Authentication check failed:", error);
+            return false;
+        }
+    }
+}
+#}
+
+</script>
+{% block templateCSS %}
+    <style>
+        .floating-btn {
+            display: block;
+            position: fixed;
+            right: 10px;
+            bottom: 220px;
+            z-index: 1000;
+            cursor: pointer;    
+        }
+
+        .floating-btn img {
+            width: 40px;
+            height: 40px;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        /* Hover effect to make the button more interactive */
+        .floating-btn img:hover {
+            transform: scale(1.1);
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .chatbox {
+            position: fixed;
+            right: -500px;
+            bottom: 80px;
+            width: 500px;
+            height: 100%;
+            background: white;
+            box-shadow: -2px 0px 10px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            transition: right 0.3s ease;
+            z-index: 999;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-family: sans-serif;
+            resize: horizontal;
+            overflow: auto;
+            min-width: 300px;
+        }
+
+        .chatbox .resize-handle {
+            position: absolute;
+            left: -5px;
+            top: 0;
+            width: 10px;
+            height: 100%;
+            cursor: ew-resize;
+        }
+        .chatbox.open {
+            top: 0px;
+            bottom: 0px;
+            right: 10px;
+        }
+
+        .chat-header {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .ai-tool {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Vertical tool list */
+        .tool-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .tool-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tool-item:hover {
+            background-color: #eaeaea;
+        }
+
+        .tool-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tool-info img {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+
+        .tool-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #007bff;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .chat-box{
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 400px;
+            border: 1px solid #ddd;
+            background: #f9f9f9;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .chat-input button {
+            padding: 8px 12px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .chat-input button:hover {
+            background-color: #0056b3;
+        }
+
+        #close-chat {
+            background-color: #1f1f1f;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+    </style>
+{% endblock %}
+
+{% block pageContent %}
+    <div id="floating-button" class="floating-btn">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HCMUT_official_logo.png/1200px-HCMUT_official_logo.png" alt="HCMUT Logo">
+    </div>
+
+    <div id="sidebar" class="sidebar-box open">
+        <div id="chatbox" class="chatbox">
+            <div class="chat-header">
+                <span>Xin chào 👋</span>
+                <button id="close-chat">
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 18 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                        d="M4.51025 3.51594C4.2386 3.23845 3.79343 3.23372 3.51594 3.50537C3.23845 3.77702 3.23372 4.22219 3.50537 4.49968L8.00075 9.09168L3.5155 13.4902C3.23825 13.7621 3.2339 14.2072 3.50579 14.4845C3.77769 14.7617 4.22286 14.7661 4.50012 14.4942L9 10.0814L13.4999 14.4942C13.7771 14.7661 14.2223 14.7617 14.4942 14.4845C14.7661 14.2072 14.7617 13.7621 14.4845 13.4902L9.99924 9.09168L14.4946 4.49968C14.7663 4.22219 14.7615 3.77702 14.4841 3.50537C14.2066 3.23372 13.7614 3.23845 13.4897 3.51594L9 8.10217L4.51025 3.51594Z"
+                        fill="currentColor"
+                        />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="ai-tool" id="ai-tool">
+                <h4>Các công cụ tích hợp</h4>
+                <div class="tool-list">
+                    <!-- Highlight Tool -->
+                    <div class="tool-item">
+                        <div class="tool-info">
+                            <img src="chrome-extension://ofpnmcalabcbjgholdjcjblkibolbppb/static/global/src/static/chatBox/chatHomeView/chatHomeViewWrite.png" alt="Highlight Tool" />
+                            <span class="tool-name">Tìm kiếm từ khóa</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="highlight-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <!-- Summarize Tool -->
+                    <div class="tool-item">
+                        <div class="tool-info">
+                            <img src="chrome-extension://ofpnmcalabcbjgholdjcjblkibolbppb/static/global/src/static/chatBox/chatHomeView/chatHomeViewAiDetector.png" alt="Summarize Tool" />
+                            <span class="tool-name">Tóm gọn câu hỏi</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="summarize-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <!-- AI Answer Tool -->
+                    <div class="tool-item">
+                        <div class="tool-info">
+                            <img src="chrome-extension://ofpnmcalabcbjgholdjcjblkibolbppb/static/global/src/static/chatBox/chatHomeView/bots.png" alt="AI Answer Tool" />
+                            <span class="tool-name">AI tự trả lời</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="aianswer-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-box" id="chat-box">
+                <!-- Chat content will be dynamically added here -->
+            </div>  
+        </div>
+    </div>
+{% endblock %}
+
+<script>
+    function setCookie(name, value, days = 30) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        const expires = "; expires=" + date.toUTCString();
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    function isFirstVisit(cookieName) {
+        return getCookie(cookieName) === null;
+    }
+
+    const AppState = {
+        highlight: false, 
+        summarize: false,
+        aiAnswer: false,
+        
+        // Set value and persist to cookie
+        setHighlight(value) {
+            this.highlight = value;
+            setCookie('highlight', value);
+        },
+        setSummarize(value) {
+            this.summarize = value;
+            setCookie('summarize', value);
+        },
+        setAiAnswer(value) {
+            this.aiAnswer = value;
+            setCookie('aiAnswer', value);
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", function () {
+        {# const chatbox = document.querySelector(".chatbox");
+        const resizeHandle = document.createElement("div");
+        resizeHandle.classList.add("resize-handle");
+        chatbox.appendChild(resizeHandle);
+
+        
+
+        let isResizing = false;
+
+        resizeHandle.addEventListener("mousedown", (e) => {
+            isResizing = true;
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+        });
+
+        function onMouseMove(e) {
+            if (isResizing) {
+                const newWidth = window.innerWidth - e.clientX;
+                chatbox.style.width = `${Math.max(300, Math.min(newWidth, 800))}px`;
+            }
+        }
+
+        function onMouseUp() {
+            isResizing = false;
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+        } #}
+
+        if (isFirstVisit('highlight')) {
+        // Only for first time visits, set default
+            setCookie('highlight', true);
+            AppState.highlight = true;
+        } else {
+            // For returning visitors, read from cookie
+            AppState.highlight = getCookie('highlight') === 'true';
+        }
+
+        AppState.summarize = getCookie('summarize') === 'true';
+        AppState.aiAnswer = getCookie('aiAnswer') === 'true';
+
+        document.getElementById('highlight-toggle').checked = AppState.highlight;
+        document.getElementById('summarize-toggle').checked = AppState.summarize;
+        document.getElementById('aianswer-toggle').checked = AppState.aiAnswer;
+        
+        if (AppState.highlight) {
+            toggleHighlightFeature(true);
+        }
+        const toggleSwitches = document.querySelectorAll('.toggle-switch input');
+        toggleSwitches.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const toolId = this.id.split('-')[0]; // Extract tool name from ID
+                console.log(`${toolId} tool is now ${this.checked ? 'enabled' : 'disabled'}`);
+                
+                if (toolId === 'highlight') {
+                    AppState.highlight = this.checked;
+                    toggleHighlightFeature(this.checked);
+                } else if (toolId === 'summarize') {
+                    AppState.summarize = this.checked;
+                    console.log("Summarize feature is not implemented yet");
+                } else if (toolId === 'aianswer') {
+                    AppState.aiAnswer = this.checked;
+                    console.log("AI Answer feature is not implemented yet");
+                }
+            });
+        });
+    });
+    
+    function toggleHighlightFeature(enabled) {
+        if (enabled) {
+            console.log("Initializing Highlight feature");
+            (async function() {
+                try {
+                    await init();
+                } catch (error) {
+                    console.error("Error during initialization:", error);
+                }
+            })();
+        } else {
+            console.log("Disabling Highlight feature");
+            if (window.aiButtonObserver) {
+                window.aiButtonObserver.disconnect();
+            }
+            cleanupAllButtons();
+        }
+    }
+
+    var ChatView = Backbone.View.extend({
+        el: 'body',
+
+        events: {
+            'click #floating-button': 'toggleChatbox',
+            'click #close-chat': 'toggleChatbox',
+            'click #send-message': 'sendMessage',
+            'keypress #chat-input-field': 'handleEnterKey'
+        },
+
+        toggleChatbox: function () {
+            $('#chatbox').toggleClass('open');
+            if ($('#chatbox').hasClass('open')) {
+                $('#floating-button').hide(); // Hides the floating button
+            } else {
+                $('#floating-button').show(); // Shows the floating button
+            }
+        },
+
+        sendMessage: function () {
+            var message = $('#chat-input-field').val().trim();
+            if (message) {
+                var userMessage = `<p><strong>You:</strong> ${message}</p>`;
+                $('#chat-messages').append(userMessage);
+                $('#chat-input-field').val('');
+                $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+
+                // Simulated bot response
+                setTimeout(() => {
+                    $('#chat-messages').append(`<p><strong>Support:</strong> Thank you for your message!</p>`);
+                    $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+                }, 1000);
+            }
+        },
+
+        handleEnterKey: function (event) {
+            if (event.key === "Enter") {
+                this.sendMessage();
+            }
+        }
+    });
+
+    var chatView = new ChatView();
+</script>
+<script>
+async function dataFetch(url, data, method) {
+    if (!url) {
+        return Promise.reject(new Error("URL is required"));
+    }
+    const options = {
+        method: method || 'GET',
+        headers: { 
+            "Content-Type": "application/json",
+            "bksi-api-key": CONFIG["bksi-api-key"]
+        },
+    };
+    
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+        options.body = JSON.stringify(data);
+    }
+    
+    return fetch(url, options)
+        .then(response => {
+            if (!response.ok) {
+                console.error(`HTTP Error: ${response.status} - ${response.statusText}`);
+                throw new Error(`Network response failed (${response.status}): ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error("Fetch operation failed:", error.message);
+            throw error;
+        });
+}
+
+
+const removedEntities = [];
+const processedTickets = new Set();
+
+function addAIButton() {
+    if (!$ || typeof $ !== 'function') {
+        console.error("jQuery is not available. Cannot add AI button.");
+        return;
+    }
+    
+    $('.uv-ticket-strip').each(function() {
+        const $currentStrip = $(this);
+        
+        const ticketId = getTicketIdentifier($currentStrip);
+        
+        if (processedTickets.has(ticketId)) {
+            const $targetElement = findTargetElement($currentStrip);
+            if ($targetElement) {
+                $targetElement.find('.ai-action-button-container').remove();
+            }
+            return;
+        }
+        
+        const $targetElement = findTargetElement($currentStrip);
+        if (!$targetElement) return;
+        
+        if ($targetElement.find('.ai-action-button').length === 0) {
+            const $buttonContainer = createButtonContainer();
+            const $button = createAIButton($currentStrip);
+            
+            $buttonContainer.append($button);
+            $targetElement.append($buttonContainer);
+        }
+    });
+}
+
+function getTicketIdentifier($strip) {
+    const $threadLink = $strip.find('.copy-thread-link');
+    if ($threadLink.length) {
+        return $threadLink.attr('id') || $strip.index();
+    }
+    
+    // Combine some attributes to make it more unique
+    const stripClass = $strip.attr('class');
+    const stripHtml = $strip.html().substring(0, 100); // Take first 100 chars of HTML
+    return `${stripClass}-${stripHtml.length}`;
+}
+
+// Helper function to find the target element
+function findTargetElement($strip) {
+    const $next = $strip.next();
+    const $nextNext = $next.next();
+    
+    if ($next.hasClass('uv-ticket-main-lt')) {
+        return $next.next(); 
+    } 
+    else if ($nextNext.hasClass('uv-ticket-main-lt')) {
+        return $nextNext.next();
+    }
+    return null;
+}
+
+function createButtonContainer() {
+    return $('<div>')
+        .addClass('ai-action-button-container')
+        .css({
+            'text-align': 'right',
+            'width': '100%',
+            'margin-top': '10px'
+        });
+}
+
+// Create AI button with event handling
+function createAIButton($strip) {
+    const $button = $('<button>')
+        .addClass('ai-action-button')
+        .text(CONFIG.buttonText)
+        .css(CONFIG.styles.button);
+        
+    $button.on('click', function() {
+        const ticketId = getTicketIdentifier($strip);
+        processedTickets.add(ticketId);
+        
+        $(this).parent().remove();
+        
+        if (window.aiButtonObserver) {
+            window.aiButtonObserver.disconnect();
+        }
+        
+        handleAIButtonClick($strip);
+        
+        {# setTimeout(() => {
+            if (window.aiButtonObserver) {
+                window.aiButtonObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }, 500); #}
+    });
+    
+    return $button;
+}
+
+function handleAIButtonClick($strip) {
+    try {
+        const $next = $strip.next();
+        const $nextNext = $next.next();
+        
+        const threadData = extractThreadData($strip, $next, $nextNext);
+        if (!threadData) {
+            console.error("Failed to extract thread data");
+            return;
+        }
+        
+        const { threadId, messageElement, messageText } = threadData;
+        
+        copyToClipboard(threadId, messageText)
+            .catch(err => {
+                console.error("Clipboard operation failed:", err);
+            });
+        
+        const highlightedContainer = createHighlightedContainer(messageElement[0]);
+        
+        processMessageWithAI(threadId, messageText, highlightedContainer);
+    } catch (error) {
+        console.error("Error in AI button click handler:", error);
+    }
+}
+
+function extractThreadData($strip, $next, $nextNext) {
+    let threadId = null;
+    let $messageElement;
+    
+    if ($next.hasClass('uv-ticket-main-lt')) {
+        const highlightComponent = document.querySelector('.uv-highlight-component');
+        threadId = highlightComponent?.dataset.threadId || null;
+        $messageElement = $next.next().find('.message');
+    } else {
+        const threadLink = $strip.find('.copy-thread-link');
+        threadId = threadLink.length ? threadLink.attr('id')?.replace('thread', '') : null;
+        $messageElement = $nextNext.next().find('.message');
+    }
+    
+    const messageText = $messageElement.text().trim();
+    
+    if (!messageText) {
+        console.error("No message text found");
+        return null;
+    }
+    
+    
+    return { threadId, messageElement: $messageElement, messageText };
+}
+
+function copyToClipboard(threadId, messageText) {
+    const clipboardText = `Thread ID: ${threadId}\n\nMessage:\n${messageText}`;
+    return navigator.clipboard.writeText(clipboardText);
+}
+
+function createHighlightedContainer(messageElement) {
+    const highlightedContainer = document.createElement('div');
+    highlightedContainer.className = 'highlighted-contain';
+    
+    messageElement.parentNode.insertBefore(highlightedContainer, messageElement.nextSibling);
+    return highlightedContainer;
+}
+
+async function processMessageWithAI(ticketId, message, container) {
+    if (!message) {
+        console.error("No message content to process");
+        return;
+    }
+
+
+    const postData = {
+        id: ticketId,
+        payload: message,
+    };
+    try {
+        const apiUrl = `${CONFIG.apiEndpoint}/route/ticket/use/${ticketId}`;
+        const data = await dataFetch(apiUrl, null, "GET");
+        if (!data || !data.ner) {
+            throw new Error("Invalid API response");
+        }
+        const highlightedMessage = highlightMessage(message, data.ner);
+        renderHighlightedContent(container, highlightedMessage);
+    } catch (error) {
+        console.error("AI processing failed:", error);
+        container.innerHTML = `
+            <div style="${Object.entries(CONFIG.styles.highlightWrapper).map(([k, v]) => `${k}:${v}`).join(';')}">
+                <p>Failed to process message with AI. Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function highlightMessage(message, payload) {
+    if (!message || !payload || !Array.isArray(payload)) {
+        console.log("Invalid payload or message for highlighting");
+        return message;
+    }
+    
+    const validEntities = payload.filter(entity => {
+        if (!entity || 
+            typeof entity.entity_start_position !== 'number' || 
+            typeof entity.entity_end_position !== 'number' ||
+            !entity.entity_string) {
+            console.warn("Invalid entity object:", entity);
+            return false;
+        }
+        return true;
+    });
+    
+    const sortedEntities = validEntities.sort((a, b) => b.entity_start_position - a.entity_start_position);
+    
+    const problematicEntities = [];
+    let modifiedMessage = message;
+    
+    sortedEntities.forEach((entity, index) => {
+        const entityString = entity.entity_string;
+        const originalStart = entity.entity_start_position;
+        const originalEnd = entity.entity_end_position;
+        
+        if (originalStart >= 0 && originalEnd <= modifiedMessage.length && 
+            modifiedMessage.substring(originalStart, originalEnd) === entityString) {
+            
+            const highlightedEntity = createHighlightedEntityHTML(entityString, index);
+            modifiedMessage = modifiedMessage.slice(0, originalStart) + 
+                              highlightedEntity + 
+                              modifiedMessage.slice(originalEnd);
+            
+            problematicEntities.push(entityString);
+        } else {
+            console.warn("Entity position mismatch, searching for entity:", entityString);
+            
+            const foundPos = findEntityInMessage(modifiedMessage, entityString);
+            
+            if (foundPos !== -1) {
+                const endPos = foundPos + entityString.length;
+                
+                const highlightedEntity = createHighlightedEntityHTML(entityString, index);
+                modifiedMessage = modifiedMessage.slice(0, foundPos) + 
+                                  highlightedEntity + 
+                                  modifiedMessage.slice(endPos);
+                
+                problematicEntities.push(entityString);
+            } else {
+                console.error(`Could not find "${entityString}" in the message`);
+                problematicEntities.push(entityString);
+            }
+        }
+    });
+
+    updateProblematicEntitiesBox(problematicEntities);
+    
+    setTimeout(attachRemoveHighlightListeners, 100);
+    
+    return modifiedMessage;
+}
+
+function findEntityInMessage(message, entityString) {
+    let pos = message.indexOf(entityString);
+    if (pos !== -1) return pos;
+    
+    pos = message.toLowerCase().indexOf(entityString.toLowerCase());
+    if (pos !== -1) {
+        console.log("Found entity with case insensitive search");
+        return pos;
+    }
+    
+    const normalizedEntity = entityString.replace(/\s+/g, ' ').trim();
+    const normalizedMessage = message.replace(/\s+/g, ' ');
+    pos = normalizedMessage.indexOf(normalizedEntity);
+    if (pos !== -1) {
+        console.log("Found entity with normalized spaces");
+        return pos;
+    }
+    
+    if (entityString.length > 5) {
+        const words = normalizedEntity.split(' ').filter(w => w.length > 3);
+        if (words.length > 1) {
+            for (let i = 0; i < normalizedMessage.length; i++) {
+                let allWordsFound = true;
+                let currentPos = i;
+                
+                for (const word of words) {
+                    currentPos = normalizedMessage.indexOf(word, currentPos);
+                    if (currentPos === -1) {
+                        allWordsFound = false;
+                        break;
+                    }
+                    currentPos += word.length;
+                }
+                
+                if (allWordsFound) {
+                    console.log("Found entity with word sequence matching");
+                    return i;
+                }
+            }
+        }
+    }
+    
+    return -1;
+}
+
+function createHighlightedEntityHTML(entityString, index) {
+    const styleString = Object.entries(CONFIG.styles.highlightTag)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('; ');
+        
+    const buttonStyleString = Object.entries(CONFIG.styles.removeButton)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('; ');
+        
+    return `
+        <span class="highlight-tag" data-entity-index="${index}" style="${styleString}">
+            ${entityString}
+            <button class="remove-highlight" data-entity-index="${index}" style="${buttonStyleString}">&times;</button>
+        </span>
+    `;
+}
+
+function attachRemoveHighlightListeners() {
+    document.querySelectorAll('.remove-highlight').forEach(button => {
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        newButton.addEventListener('click', function() {
+            const entityIndex = this.getAttribute('data-entity-index');
+            removeHighlight(entityIndex);
+        });
+    });
+}
+
+function removeHighlight(entityIndex) {
+    const highlightTag = document.querySelector(`.highlight-tag[data-entity-index="${entityIndex}"]`);
+    if (!highlightTag) return;
+    
+    try {
+        const originalText = highlightTag.childNodes[0].textContent.trim();
+        const originalNode = highlightTag.cloneNode(true);
+        const textNode = document.createTextNode(originalText);
+        
+        if (typeof removedEntities === 'undefined') {
+            console.error("removedEntities array is not defined");
+            return;
+        }
+
+        removedEntities.push({
+            entityIndex: entityIndex,
+            originalText: originalText,
+            originalNode: originalNode,
+            replacementNode: textNode,
+            position: getNodePosition(highlightTag)
+        });
+
+        highlightTag.replaceWith(document.createTextNode(originalText));
+
+        const box = document.querySelector('.problematic-entities-box');
+        const list = document.getElementById('problematic-entities-list');
+        if (list && box) {
+            // Make the box visible
+            box.style.display = "block";
+            
+            // Add the removed entity to the list
+            {# const listItem = document.createElement('li');
+            listItem.textContent = originalText;
+            listItem.style.padding = '5px';
+            listItem.style.borderBottom = '1px solid #eee';
+            list.appendChild(listItem); #}
+            addEntityToProblematicList(originalText, removedEntities.length - 1);
+        }
+    } catch (error) {
+        console.error("Error removing highlight:", error);
+    }
+}
+
+function getNodePosition(node) {
+    let position = 0;
+    let current = node;
+    
+    while (current.previousSibling) {
+        position++;
+        current = current.previousSibling;
+    }
+    
+    return position;
+}
+
+function addEntityToProblematicList(entityText, index) {
+    const list = document.getElementById('problematic-entities-list');
+    if (!list) return;
+    
+    const listItem = document.createElement('li');
+    
+    // Apply styles from CONFIG
+    Object.entries(CONFIG.styles.problematicEntityItem).forEach(([key, value]) => {
+        listItem.style[key] = value;
+    });
+    
+    // Create text span
+    const textSpan = document.createElement('span');
+    textSpan.textContent = entityText;
+    
+    // Create undo button
+    const undoButton = document.createElement('button');
+    undoButton.innerHTML = '&times;'; // × symbol
+    undoButton.setAttribute('data-removed-index', index);
+    undoButton.className = 'undo-remove-button';
+    
+    // Apply styles from CONFIG
+    Object.entries(CONFIG.styles.undoButton).forEach(([key, value]) => {
+        undoButton.style[key] = value;
+    });
+    
+    // Add event listener to undo button
+    undoButton.addEventListener('click', function() {
+        const removedIndex = parseInt(this.getAttribute('data-removed-index'));
+        undoRemoveHighlight(removedIndex);
+    });
+    
+    // Append elements to list item
+    listItem.appendChild(textSpan);
+    listItem.appendChild(undoButton);
+    
+    // Add list item to the list
+    list.appendChild(listItem);
+}
+
+function undoRemoveHighlight(removedIndex) {
+    const removedEntity = removedEntities[removedIndex];
+    if (!removedEntity) return;
+    
+    try {
+        // Find the text node that replaced the highlight
+        const parent = document.querySelector('.highlight-wrapper p');
+        if (!parent) {
+            console.error("Could not find parent element for undo operation");
+            return;
+        }
+        
+        // Create a new highlight node
+        const newHighlightNode = document.createElement('span');
+        newHighlightNode.className = 'highlight-tag';
+        newHighlightNode.setAttribute('data-entity-index', removedEntity.entityIndex);
+        
+        // Apply highlight styles
+        Object.entries(CONFIG.styles.highlightTag).forEach(([key, value]) => {
+            newHighlightNode.style[key] = value;
+        });
+        
+        // Add text content
+        newHighlightNode.textContent = removedEntity.originalText;
+        
+        // Add remove button to highlight
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-highlight';
+        removeBtn.setAttribute('data-entity-index', removedEntity.entityIndex);
+        removeBtn.innerHTML = '&times;';
+        
+        // Apply remove button styles
+        Object.entries(CONFIG.styles.removeButton).forEach(([key, value]) => {
+            removeBtn.style[key] = value;
+        });
+        
+        // Add event listener to the new remove button
+        removeBtn.addEventListener('click', function() {
+            const entityIndex = this.getAttribute('data-entity-index');
+            removeHighlight(entityIndex);
+        });
+        
+        newHighlightNode.appendChild(removeBtn);
+        
+        // Find all text nodes in the paragraph
+        const textNodes = [];
+        findTextNodes(parent, textNodes);
+        
+        // Look for the node containing our text
+        let found = false;
+        for (let i = 0; i < textNodes.length; i++) {
+            const node = textNodes[i];
+            const nodeText = node.textContent;
+            
+            if (nodeText.includes(removedEntity.originalText)) {
+                // Split the text node if necessary
+                const startIndex = nodeText.indexOf(removedEntity.originalText);
+                if (startIndex > 0) {
+                    // Text before our target
+                    node.parentNode.insertBefore(
+                        document.createTextNode(nodeText.substring(0, startIndex)),
+                        node
+                    );
+                }
+                
+                // Insert our highlight
+                node.parentNode.insertBefore(newHighlightNode, node);
+                
+                // Text after our target
+                const endIndex = startIndex + removedEntity.originalText.length;
+                if (endIndex < nodeText.length) {
+                    node.parentNode.insertBefore(
+                        document.createTextNode(nodeText.substring(endIndex)),
+                        node.nextSibling
+                    );
+                }
+                
+                // Remove the original node
+                node.parentNode.removeChild(node);
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            console.warn("Could not find text node for undo operation");
+        }
+        
+        // Remove the entity from the problematic list
+        const listItem = document.querySelector(`button.undo-remove-button[data-removed-index="${removedIndex}"]`).parentNode;
+        if (listItem && listItem.parentNode) {
+            listItem.parentNode.removeChild(listItem);
+        }
+        
+        // Hide the box if empty
+        const list = document.getElementById('problematic-entities-list');
+        if (list && list.children.length === 0) {
+            const box = document.querySelector('.problematic-entities-box');
+            if (box) {
+                box.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error("Error undoing highlight removal:", error);
+    }
+}
+
+function findTextNodes(element, result) {
+    if (element.nodeType === 3) { // Text node
+        result.push(element);
+        return;
+    }
+    
+    for (let i = 0; i < element.childNodes.length; i++) {
+        findTextNodes(element.childNodes[i], result);
+    }
+}
+
+function updateProblematicEntitiesBox(entities) {
+    if (!entities || entities.length === 0) return;
+
+    const list = document.getElementById('problematic-entities-list');
+    if (!list) {
+        console.warn("Element 'problematic-entities-list' not found");
+        return;
+    }
+
+    const container = document.querySelector('.problematic-entities-box');
+    if (container) {
+        container.style.display = entities.length > 0 ? 'block' : 'none';
+    }
+
+    list.innerHTML = '';
+    entities.forEach(entity => {
+        if (!entity) return;
+        
+        {# const listItem = document.createElement('li');
+        listItem.textContent = entity;
+        listItem.style.padding = '5px';
+        listItem.style.borderBottom = '1px solid #eee';
+        list.appendChild(listItem); #}
+
+        addEntityToProblematicList(entity, index);
+    });
+}
+
+function renderHighlightedContent(container, highlightedMessage) {
+    const wrapperStyle = Object.entries(CONFIG.styles.highlightWrapper)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(';');
+    
+    const titleStyle = Object.entries(CONFIG.styles.highlightTitle)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(';');
+    container.innerHTML = `
+        <div class="highlight-wrapper" style="${Object.entries(CONFIG.styles.highlightWrapper)
+            .map(([k, v]) => `${k}:${v}`)
+            .join(';')}">
+            <div style="${Object.entries(CONFIG.styles.highlightTitle)
+                .map(([k, v]) => `${k}:${v}`)
+                .join(';')}">Công cụ tìm kiếm từ khóa</div>
+            <p>${highlightedMessage}</p>
+            <div class="problematic-entities-box" style="width: 300px; margin: 10px; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9; max-height: 200px; overflow-y: auto; display: none;">
+                <h5>Từ khóa không tốt:</h5>
+                <ul id="problematic-entities-list"></ul>
+            </div>
+            <div class="assessment-buttons">
+                <h5>Đánh giá câu trả lời của AI:</h5>
+                <button class="custom-btn1" style="background-color: rgb(131, 144, 240); color: rgb(255, 255, 255); padding: 8px 15px; margin-top: 6px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" data-assessment="positive">Rất tốt</button>
+                <button class="custom-btn1" style="background-color: rgb(131, 144, 240); color: rgb(255, 255, 255); padding: 8px 15px; margin-top: 6px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" data-assessment="neutral">Tốt</button>
+                <button class="custom-btn1" style="background-color: rgb(131, 144, 240); color: rgb(255, 255, 255); padding: 8px 15px; margin-top: 6px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;" data-assessment="negative">Không tốt</button>
+                <div id="thank-you-message" style="display: none; margin-top: 10px; font-size: 18px; color: #00008B;">
+                    Cám ơn bạn đã góp ý 
+                </div>
+            </div>
+            {# <button id="ai-suggestion-btn" style="background-color: rgb(131, 144, 240); color: rgb(255, 255, 255); padding: 8px 15px; margin-top: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Câu trả lời gợi ý từ AI</button>
+            <div id="ai-suggestion-box" style="display: none; margin-top: 10px; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; background-color: #f0f8ff; border-radius: 4px;">
+                <textarea id="ai-suggestion-text" rows="5" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"></textarea>
+                <button id="copy-suggestion" style="background-color: rgb(131, 144, 240); color: rgb(255, 255, 255); padding: 8px 15px; margin-top: 6px; border: none; border-radius: 4px; cursor: pointer;">Sao chép gợi ý</button>
+            </div> #}
+        </div>  
+    `;
+
+    attachAssessmentButtonListeners();
+    attachSuggestionButtonListeners();
+    
+    {# removeAllButtonsFromProcessedTickets(); #}
+}
+
+function removeAllButtonsFromProcessedTickets() {
+    $('.uv-ticket-strip').each(function() {
+        const $strip = $(this);
+        const ticketId = getTicketIdentifier($strip);
+        
+        if (processedTickets.has(ticketId)) {
+            const $targetElement = findTargetElement($strip);
+            if ($targetElement) {
+                $targetElement.find('.ai-action-button-container').remove();
+            }
+        }
+    });
+}
+
+// Attach event listeners to assessment buttons
+function attachAssessmentButtonListeners() {
+    document.querySelectorAll(".custom-btn1 ").forEach(button => {
+        button.addEventListener("click", function() {
+            const assessment = this.getAttribute("data-assessment");
+
+            const thankYouMessage = document.getElementById("thank-you-message");
+            if (thankYouMessage) {
+                thankYouMessage.style.display = "block";
+                
+            }
+
+            // Submit the assessment
+            submitAssessment(assessment);
+        });
+    });
+}
+
+function attachSuggestionButtonListeners() {
+    const suggestionBtn = document.getElementById("ai-suggestion-btn");
+    if (suggestionBtn) {
+        suggestionBtn.addEventListener("click", function() {
+            const suggestionBox = document.getElementById("ai-suggestion-box");
+            if (!suggestionBox) return;
+            
+            suggestionBox.style.display = suggestionBox.style.display === "none" ? "block" : "none";
+            
+            if (suggestionBox.style.display === "block") {
+                const suggestionText = document.getElementById("ai-suggestion-text");
+                if (suggestionText) {
+                    suggestionText.value = "This is an AI-generated suggestion based on the customer's message.";
+                }
+            }
+        });
+    }
+    
+    const copyBtn = document.getElementById("copy-suggestion");
+    if (copyBtn) {
+        copyBtn.addEventListener("click", function() {
+            const suggestionText = document.getElementById("ai-suggestion-text");
+            if (!suggestionText) return;
+            
+            navigator.clipboard.writeText(suggestionText.value)
+                .then(() => {
+                    alert("Suggestion copied to clipboard!");
+                })
+                .catch(err => {
+                    console.error("Failed to copy suggestion: ", err);
+                    alert("Failed to copy. Please try again.");
+                });
+        });
+    }
+}
+
+async function submitAssessment(assessment) {
+    try {
+        const messageElement = document.querySelector('.message');
+        const message = messageElement?.textContent?.trim() || '';
+        
+        // Get problematic entities
+        const problematicEntitiesList = document.getElementById('problematic-entities-list');
+        const problematicEntities = [];
+
+        if (problematicEntitiesList) {
+            const listItems = problematicEntitiesList.getElementsByTagName('li');
+            Array.from(listItems).forEach(item => {
+                const entityString = item.textContent;
+                const startPosition = message.indexOf(entityString);
+                if (startPosition !== -1) {
+                    problematicEntities.push({
+                        entity_string: entityString,
+                        entity_start_position: startPosition,
+                        entity_end_position: startPosition + entityString.length
+                    });
+                }
+            });
+        }
+
+
+        const ratingValue = {
+            'positive': 1,
+            'neutral': 0,
+            'negative': -1
+        }[assessment] ?? 0;
+
+        const requestBody = [{
+            service_name: "ner",
+            feedback_type: "rate", 
+            value: ratingValue
+        }];
+
+
+        
+        return await dataFetch(
+            `${CONFIG.apiEndpoint}/route/report/feedback`,
+            requestBody,
+            'POST'
+        ).then(data => {
+            console.log('Assessment submitted successfully:', data);
+            return data;
+        });
+    } catch (error) {
+        console.error('Error in submitAssessment:', error);
+    }
+}
+
+// Force remove all buttons from tickets (cleanup function)
+function cleanupAllButtons() {
+    $('.ai-action-button-container').remove();
+}
+
+// Initialize the application
+async function init() {
+    if (!AppState.highlight) {
+        console.log("Highlight feature is disabled. Not initializing.");
+        return;
+    }
+    try {
+        cleanupAllButtons();
+    
+        addAIButton();
+        
+        window.aiButtonObserver = new MutationObserver(function(mutations) {
+            let needsUpdate = false;
+            
+            mutations.forEach(function(mutation) {
+                if (mutation.addedNodes && mutation.addedNodes.length) {
+                    needsUpdate = true;
+                }
+            });
+            
+            if (needsUpdate) {
+                // Remove any buttons from already processed tickets first
+                {# removeAllButtonsFromProcessedTickets(); #}
+                
+                // Then add buttons where needed
+                addAIButton();
+            }
+        });
+        
+        // Start observing the document
+        window.aiButtonObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        console.log("AI assistance tool initialized");
+            
+        } catch (error) {
+            console.error("Failed to initialize AI:", error);
+        }
+    
+}
+(async function() {
+    try {
+        await init();
+    } catch (error) {
+        console.error("Error during initialization:", error);
+    }
+})();
+</script>
