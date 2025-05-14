@@ -2,7 +2,7 @@
 <script>
 const CONFIG = {
     apiEndpoint: "http://127.0.0.1:8210",
-    "bksi-api-key": "d59f6e4ab0479400059110462741370f4b0962a01e2d3d367312f1bc0060b8ff",
+    "bksi-api-key": "3ab48662b25ac8e662ecae2949354a6720b5c262c9063635d2cc0c4de9890f56",
     buttonText: "Trợ giúp AI",
     styles: {
         button: {
@@ -62,179 +62,7 @@ const CONFIG = {
         }
     }
 };
-{# class AuthService {
-    constructor() {
-        this.currentToken = null;
-        this.tokenExpiry = null;
-        this.renewalInterval = 14 * 60 * 1000; // 14 minutes
-        this.isInitialized = false;
-        this.renewalTimer = null;
-    }
 
-    async initialize() {
-        if (this.isInitialized) return true;
-        
-        try {
-            console.log("Starting authentication initialization...");
-            
-            // Attempt signup (ignore failures)
-            await this.signup().catch(e => console.log("Signup attempt completed with warnings"));
-            
-            // Attempt login and token acquisition
-            await this.login();
-            
-            // Verify we have a token
-            if (!this.currentToken) {
-                throw new Error("No token received after login");
-            }
-            
-            this.startTokenRenewal();
-            this.isInitialized = true;
-            console.log("Authentication initialized successfully");
-            return true;
-            
-        } catch (error) {
-            console.error("Auth initialization failed:", error);
-            this.isInitialized = false;
-            throw error;
-        }
-    }
-
-    async signup() {
-        console.log("Attempting signup...");
-        const response = await fetch(`${CONFIG.apiEndpoint}/signup`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(CONFIG.authCredentials),
-        
-        });
-
-        console.log(`Signup response: ${response.status} ${response.statusText}`);
-        
-        // Only throw for unexpected errors (not 400/409)
-        if (!response.ok && ![400, 409].includes(response.status)) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || 'Signup failed');
-        }
-    }
-
-    async login() {
-        console.log("Attempting login...");
-        const response = await fetch(`${CONFIG.apiEndpoint}/login`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify(CONFIG.authCredentials),
-        });
-
-        
-        
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || 'Login failed');
-        }
-
-        // Extract cookies from response
-        const cookies = response.headers.get('set-cookie');
-        console.log("Received cookies:", cookies);
-        
-        return this.getNewToken();
-    }
-
-    async getNewToken() {
-        console.log("Requesting new token...");
-        const response = await fetch(`${CONFIG.apiEndpoint}/key`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            },
-            credentials: 'include'
-        });
-
-        console.log(`Token response: ${response.status} ${response.statusText}`);
-        
-        if (!response.ok) {
-            throw new Error(`Token request failed: ${response.status}`);
-        }
-
-        const data = await response.json().catch(e => {
-            throw new Error("Invalid token response format");
-        });
-
-        if (!data.token) {
-            throw new Error("No token in response");
-        }
-
-        this.currentToken = data.token;
-        this.tokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
-        console.log("Token received, expires at:", this.tokenExpiry);
-        return this.currentToken;
-    }
-
-    getAuthHeaders() {
-        if (!this.currentToken) {
-            console.warn("No token available - using minimal headers");
-            return {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            };
-        }
-        
-        return {
-            'bksi-api-key': this.currentToken,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        };
-    }
-
-    startTokenRenewal() {
-        this.clearTokenRenewal();
-        
-        this.renewalTimer = setInterval(async () => {
-            try {
-                console.log("Starting token renewal...");
-                await this.getNewToken();
-                console.log("Token renewed successfully");
-            } catch (error) {
-                console.error("Token renewal failed:", error);
-                try {
-                    await this.login();
-                } catch (loginError) {
-                    console.error("Re-login failed:", loginError);
-                }
-            }
-        }, this.renewalInterval);
-    }
-
-    clearTokenRenewal() {
-        if (this.renewalTimer) {
-            clearInterval(this.renewalTimer);
-            this.renewalTimer = null;
-        }
-    }
-
-    isAuthenticated() {
-        return this.isInitialized && !!this.currentToken;
-    }
-
-    async ensureAuthenticated() {
-        if (this.isAuthenticated()) return true;
-        
-        try {
-            return await this.initialize();
-        } catch (error) {
-            console.error("Authentication check failed:", error);
-            return false;
-        }
-    }
-}
-#}
 
 </script>
 {% block templateCSS %}
@@ -740,7 +568,8 @@ async function dataFetch(url, data, method) {
         });
 }
 
-
+const highlightEntities = [];
+const removedHighlightEntities = [];
 const removedEntities = [];
 const processedTickets = new Set();
 
@@ -784,7 +613,7 @@ function getTicketIdentifier($strip) {
     
     // Combine some attributes to make it more unique
     const stripClass = $strip.attr('class');
-    const stripHtml = $strip.html().substring(0, 100); // Take first 100 chars of HTML
+    const stripHtml = $strip.html().substring(0, 100); 
     return `${stripClass}-${stripHtml.length}`;
 }
 
@@ -857,10 +686,7 @@ function handleAIButtonClick($strip) {
         
         const { threadId, messageElement, messageText } = threadData;
         
-        copyToClipboard(threadId, messageText)
-            .catch(err => {
-                console.error("Clipboard operation failed:", err);
-            });
+
         
         const highlightedContainer = createHighlightedContainer(messageElement[0]);
         
@@ -907,14 +733,38 @@ function createHighlightedContainer(messageElement) {
     messageElement.parentNode.insertBefore(highlightedContainer, messageElement.nextSibling);
     return highlightedContainer;
 }
+function summaryMessage(originalMessage, summaryData) {
+    if (!summaryData) return '';
+    const summaryText = 
+        typeof summaryData === 'string' 
+            ? summaryData 
+            : Array.isArray(summaryData) 
+                ? summaryData.join(' ') 
+                : JSON.stringify(summaryData);
+    const boxStyle = [
+        'border:1px solid #ccc',
+        'padding:10px',
+        'margin-top:10px',
+        'background-color:#f0f8ff',
+        'border-radius:4px'
+    ].join(';');
+    const titleStyle = [
+        'font-weight:bold',
+        'margin-bottom:5px'
+    ].join(';');
 
+    return `
+        <div class="summary-box" style="${boxStyle}">
+            <div class="summary-title" style="${titleStyle}">Tóm tắt</div>
+            <p>${summaryText}</p>
+        </div>
+    `;
+}
 async function processMessageWithAI(ticketId, message, container) {
     if (!message) {
         console.error("No message content to process");
         return;
     }
-
-
     const postData = {
         id: ticketId,
         payload: message,
@@ -922,83 +772,53 @@ async function processMessageWithAI(ticketId, message, container) {
     try {
         const apiUrl = `${CONFIG.apiEndpoint}/route/ticket/use/${ticketId}`;
         const data = await dataFetch(apiUrl, null, "GET");
-        if (!data || !data.ner) {
+        if (!data || !data.ner || !data.summary) {
             throw new Error("Invalid API response");
         }
+        highlightEntities.length = 0;
+        removedHighlightEntities.length = 0;
+        data.ner.forEach(ent => {
+            highlightEntities.push({
+                entity_string: ent.entity_string,
+                entity_start_position: ent.entity_start_position,
+                entity_end_position: ent.entity_end_position
+            });
+        });
         const highlightedMessage = highlightMessage(message, data.ner);
-        renderHighlightedContent(container, highlightedMessage);
+        const summaryHTML = summaryMessage(message, data.summary);
+        renderHighlightedContent(container, highlightedMessage,summaryHTML);
     } catch (error) {
         console.error("AI processing failed:", error);
         container.innerHTML = `
-            <div style="${Object.entries(CONFIG.styles.highlightWrapper).map(([k, v]) => `${k}:${v}`).join(';')}">
+            <div style="border: 1px solid #ccc; border-radius: 8px; padding: 12px; background-color: #ffffff;">
                 <p>Failed to process message with AI. Error: ${error.message}</p>
             </div>
         `;
     }
 }
 
-function highlightMessage(message, payload) {
-    if (!message || !payload || !Array.isArray(payload)) {
-        console.log("Invalid payload or message for highlighting");
-        return message;
-    }
-    
-    const validEntities = payload.filter(entity => {
-        if (!entity || 
-            typeof entity.entity_start_position !== 'number' || 
-            typeof entity.entity_end_position !== 'number' ||
-            !entity.entity_string) {
-            console.warn("Invalid entity object:", entity);
-            return false;
-        }
-        return true;
-    });
-    
-    const sortedEntities = validEntities.sort((a, b) => b.entity_start_position - a.entity_start_position);
-    
-    const problematicEntities = [];
-    let modifiedMessage = message;
-    
-    sortedEntities.forEach((entity, index) => {
-        const entityString = entity.entity_string;
-        const originalStart = entity.entity_start_position;
-        const originalEnd = entity.entity_end_position;
-        
-        if (originalStart >= 0 && originalEnd <= modifiedMessage.length && 
-            modifiedMessage.substring(originalStart, originalEnd) === entityString) {
-            
-            const highlightedEntity = createHighlightedEntityHTML(entityString, index);
-            modifiedMessage = modifiedMessage.slice(0, originalStart) + 
-                              highlightedEntity + 
-                              modifiedMessage.slice(originalEnd);
-            
-            problematicEntities.push(entityString);
-        } else {
-            console.warn("Entity position mismatch, searching for entity:", entityString);
-            
-            const foundPos = findEntityInMessage(modifiedMessage, entityString);
-            
-            if (foundPos !== -1) {
-                const endPos = foundPos + entityString.length;
-                
-                const highlightedEntity = createHighlightedEntityHTML(entityString, index);
-                modifiedMessage = modifiedMessage.slice(0, foundPos) + 
-                                  highlightedEntity + 
-                                  modifiedMessage.slice(endPos);
-                
-                problematicEntities.push(entityString);
-            } else {
-                console.error(`Could not find "${entityString}" in the message`);
-                problematicEntities.push(entityString);
-            }
-        }
-    });
+function highlightMessage(message, highlightEntities) {
+    if (typeof message !== 'string' || !Array.isArray(highlightEntities)) {
+    console.warn('highlightMessage: invalid inputs');
+    return message;
+  }
 
-    updateProblematicEntitiesBox(problematicEntities);
-    
-    setTimeout(attachRemoveHighlightListeners, 100);
-    
-    return modifiedMessage;
+  const indexed = highlightEntities.map((e, idx) => ({
+    ...e,
+    __idx: idx
+  }));
+
+  indexed.sort((a, b) => b.entity_start_position - a.entity_start_position);
+
+  let result = message;
+  indexed.forEach(ent => {
+    const { entity_string, entity_start_position: start, entity_end_position: end, __idx } = ent;
+    const wrapped = createHighlightedEntityHTML(entity_string, __idx);
+    result = result.slice(0, start) + wrapped + result.slice(end);
+  });
+
+  setTimeout(attachRemoveHighlightListeners, 100);
+  return result;
 }
 
 function findEntityInMessage(message, entityString) {
@@ -1046,24 +866,18 @@ function findEntityInMessage(message, entityString) {
     return -1;
 }
 
-function createHighlightedEntityHTML(entityString, index) {
-    const styleString = Object.entries(CONFIG.styles.highlightTag)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join('; ');
-        
-    const buttonStyleString = Object.entries(CONFIG.styles.removeButton)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join('; ');
-        
+function createHighlightedEntityHTML(entityString, index) {    
     return `
-        <span class="highlight-tag" data-entity-index="${index}" style="${styleString}">
+        <span class="highlight-tag" data-entity-index="${index}" style="background-color: CornflowerBlue; color: white; padding: 2px 5px; border-radius: 5px; display: inline-flex; align-items: center;">
             ${entityString}
-            <button class="remove-highlight" data-entity-index="${index}" style="${buttonStyleString}">&times;</button>
+            <button class="remove-highlight" data-entity-index="${index}" style="background: none; border: none; color: white;font-weight: bold; margin-left: 5px; cursor: pointer;">&times;</button>
         </span>
     `;
 }
 
 function attachRemoveHighlightListeners() {
+    console.log(removedHighlightEntities)
+    console.log(highlightEntities)
     document.querySelectorAll('.remove-highlight').forEach(button => {
         const newButton = button.cloneNode(true);
         button.parentNode.replaceChild(newButton, button);
@@ -1076,46 +890,16 @@ function attachRemoveHighlightListeners() {
 }
 
 function removeHighlight(entityIndex) {
-    const highlightTag = document.querySelector(`.highlight-tag[data-entity-index="${entityIndex}"]`);
-    if (!highlightTag) return;
-    
-    try {
-        const originalText = highlightTag.childNodes[0].textContent.trim();
-        const originalNode = highlightTag.cloneNode(true);
-        const textNode = document.createTextNode(originalText);
-        
-        if (typeof removedEntities === 'undefined') {
-            console.error("removedEntities array is not defined");
-            return;
-        }
+    const [removed] = highlightEntities.splice(entityIndex, 1);
+  if (!removed) return;
 
-        removedEntities.push({
-            entityIndex: entityIndex,
-            originalText: originalText,
-            originalNode: originalNode,
-            replacementNode: textNode,
-            position: getNodePosition(highlightTag)
-        });
+  removedHighlightEntities.push(removed);
 
-        highlightTag.replaceWith(document.createTextNode(originalText));
+  const span = document.querySelector(`.highlight-tag[data-entity-index="${entityIndex}"]`);
+  if (span) span.replaceWith(document.createTextNode(removed.entity_string));
 
-        const box = document.querySelector('.problematic-entities-box');
-        const list = document.getElementById('problematic-entities-list');
-        if (list && box) {
-            // Make the box visible
-            box.style.display = "block";
-            
-            // Add the removed entity to the list
-            {# const listItem = document.createElement('li');
-            listItem.textContent = originalText;
-            listItem.style.padding = '5px';
-            listItem.style.borderBottom = '1px solid #eee';
-            list.appendChild(listItem); #}
-            addEntityToProblematicList(originalText, removedEntities.length - 1);
-        }
-    } catch (error) {
-        console.error("Error removing highlight:", error);
-    }
+  const removedStrings = removedHighlightEntities.map(e => e.entity_string);
+  updateProblematicEntitiesBox(removedStrings);
 }
 
 function getNodePosition(node) {
@@ -1136,145 +920,47 @@ function addEntityToProblematicList(entityText, index) {
     
     const listItem = document.createElement('li');
     
-    // Apply styles from CONFIG
     Object.entries(CONFIG.styles.problematicEntityItem).forEach(([key, value]) => {
         listItem.style[key] = value;
     });
     
-    // Create text span
     const textSpan = document.createElement('span');
     textSpan.textContent = entityText;
     
-    // Create undo button
     const undoButton = document.createElement('button');
     undoButton.innerHTML = '&times;'; // × symbol
     undoButton.setAttribute('data-removed-index', index);
     undoButton.className = 'undo-remove-button';
     
-    // Apply styles from CONFIG
     Object.entries(CONFIG.styles.undoButton).forEach(([key, value]) => {
         undoButton.style[key] = value;
     });
     
-    // Add event listener to undo button
     undoButton.addEventListener('click', function() {
         const removedIndex = parseInt(this.getAttribute('data-removed-index'));
         undoRemoveHighlight(removedIndex);
     });
     
-    // Append elements to list item
     listItem.appendChild(textSpan);
     listItem.appendChild(undoButton);
     
-    // Add list item to the list
     list.appendChild(listItem);
 }
 
 function undoRemoveHighlight(removedIndex) {
-    const removedEntity = removedEntities[removedIndex];
-    if (!removedEntity) return;
-    
-    try {
-        // Find the text node that replaced the highlight
-        const parent = document.querySelector('.highlight-wrapper p');
-        if (!parent) {
-            console.error("Could not find parent element for undo operation");
-            return;
-        }
-        
-        // Create a new highlight node
-        const newHighlightNode = document.createElement('span');
-        newHighlightNode.className = 'highlight-tag';
-        newHighlightNode.setAttribute('data-entity-index', removedEntity.entityIndex);
-        
-        // Apply highlight styles
-        Object.entries(CONFIG.styles.highlightTag).forEach(([key, value]) => {
-            newHighlightNode.style[key] = value;
-        });
-        
-        // Add text content
-        newHighlightNode.textContent = removedEntity.originalText;
-        
-        // Add remove button to highlight
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-highlight';
-        removeBtn.setAttribute('data-entity-index', removedEntity.entityIndex);
-        removeBtn.innerHTML = '&times;';
-        
-        // Apply remove button styles
-        Object.entries(CONFIG.styles.removeButton).forEach(([key, value]) => {
-            removeBtn.style[key] = value;
-        });
-        
-        // Add event listener to the new remove button
-        removeBtn.addEventListener('click', function() {
-            const entityIndex = this.getAttribute('data-entity-index');
-            removeHighlight(entityIndex);
-        });
-        
-        newHighlightNode.appendChild(removeBtn);
-        
-        // Find all text nodes in the paragraph
-        const textNodes = [];
-        findTextNodes(parent, textNodes);
-        
-        // Look for the node containing our text
-        let found = false;
-        for (let i = 0; i < textNodes.length; i++) {
-            const node = textNodes[i];
-            const nodeText = node.textContent;
-            
-            if (nodeText.includes(removedEntity.originalText)) {
-                // Split the text node if necessary
-                const startIndex = nodeText.indexOf(removedEntity.originalText);
-                if (startIndex > 0) {
-                    // Text before our target
-                    node.parentNode.insertBefore(
-                        document.createTextNode(nodeText.substring(0, startIndex)),
-                        node
-                    );
-                }
-                
-                // Insert our highlight
-                node.parentNode.insertBefore(newHighlightNode, node);
-                
-                // Text after our target
-                const endIndex = startIndex + removedEntity.originalText.length;
-                if (endIndex < nodeText.length) {
-                    node.parentNode.insertBefore(
-                        document.createTextNode(nodeText.substring(endIndex)),
-                        node.nextSibling
-                    );
-                }
-                
-                // Remove the original node
-                node.parentNode.removeChild(node);
-                found = true;
-                break;
-            }
-        }
-        
-        if (!found) {
-            console.warn("Could not find text node for undo operation");
-        }
-        
-        // Remove the entity from the problematic list
-        const listItem = document.querySelector(`button.undo-remove-button[data-removed-index="${removedIndex}"]`).parentNode;
-        if (listItem && listItem.parentNode) {
-            listItem.parentNode.removeChild(listItem);
-        }
-        
-        // Hide the box if empty
-        const list = document.getElementById('problematic-entities-list');
-        if (list && list.children.length === 0) {
-            const box = document.querySelector('.problematic-entities-box');
-            if (box) {
-                box.style.display = 'none';
-            }
-        }
-    } catch (error) {
-        console.error("Error undoing highlight removal:", error);
-    }
+    const [ent] = removedHighlightEntities.splice(removedIndex, 1);
+  if (!ent) return;
+
+  highlightEntities.push(ent);
+
+  const p = document.querySelector('.highlight-wrapper p');
+  if (p) {
+    p.innerHTML = highlightMessage(p.textContent, highlightEntities);
+  }
+
+  // 4) Now rebuild the problematic box from whatever remains removed
+  const remaining = removedHighlightEntities.map(e => e.entity_string);
+  updateProblematicEntitiesBox(remaining);
 }
 
 function findTextNodes(element, result) {
@@ -1288,50 +974,50 @@ function findTextNodes(element, result) {
     }
 }
 
-function updateProblematicEntitiesBox(entities) {
-    if (!entities || entities.length === 0) return;
+function updateProblematicEntitiesBox(strings) {
+  const box  = document.querySelector('.problematic-entities-box');
+  const list = document.getElementById('problematic-entities-list');
+  if (!box || !list) return;
 
-    const list = document.getElementById('problematic-entities-list');
-    if (!list) {
-        console.warn("Element 'problematic-entities-list' not found");
-        return;
-    }
+  box.style.display = strings.length ? 'block' : 'none';
+  list.innerHTML = '';
 
-    const container = document.querySelector('.problematic-entities-box');
-    if (container) {
-        container.style.display = entities.length > 0 ? 'block' : 'none';
-    }
-
-    list.innerHTML = '';
-    entities.forEach(entity => {
-        if (!entity) return;
-        
-        {# const listItem = document.createElement('li');
-        listItem.textContent = entity;
-        listItem.style.padding = '5px';
-        listItem.style.borderBottom = '1px solid #eee';
-        list.appendChild(listItem); #}
-
-        addEntityToProblematicList(entity, index);
+  strings.forEach((text, idx) => {
+    const li = document.createElement('li');
+    Object.assign(li.style, {
+      display:        'flex',
+      justifyContent: 'space-between',
+      alignItems:     'center',
+      padding:        '6px 10px',
+      borderBottom:   '1px solid #eee',
+      fontSize:       '14px',
+      color:          '#333'
     });
+    const textSpan = document.createElement('span');
+    textSpan.textContent = text;
+    const btn = document.createElement('button');
+    btn.textContent = '×';  
+    Object.assign(btn.style, {
+      background:    'transparent',
+      border:        'none',
+      fontSize:      '18px',
+      color:         '#c00',
+      cursor:        'pointer',
+      lineHeight:    '1',
+      padding:       '0 5px'
+    });
+    btn.addEventListener('click', () => undoRemoveHighlight(idx));
+    li.appendChild(textSpan);
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
 }
-
-function renderHighlightedContent(container, highlightedMessage) {
-    const wrapperStyle = Object.entries(CONFIG.styles.highlightWrapper)
-        .map(([k, v]) => `${k}:${v}`)
-        .join(';');
-    
-    const titleStyle = Object.entries(CONFIG.styles.highlightTitle)
-        .map(([k, v]) => `${k}:${v}`)
-        .join(';');
+function renderHighlightedContent(container, highlightedMessage, summaryHTML) {
     container.innerHTML = `
-        <div class="highlight-wrapper" style="${Object.entries(CONFIG.styles.highlightWrapper)
-            .map(([k, v]) => `${k}:${v}`)
-            .join(';')}">
-            <div style="${Object.entries(CONFIG.styles.highlightTitle)
-                .map(([k, v]) => `${k}:${v}`)
-                .join(';')}">Công cụ tìm kiếm từ khóa</div>
+        <div class="highlight-wrapper" style="border: 1px solid #ccc; border-radius: 8px; padding: 12px; background-color: #ffffff;">
+            <div style="color: #222226; font-size: 20px; font-weight: 600; line-height: 16px; margin-top: 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">Công cụ tìm kiếm từ khóa</div>
             <p>${highlightedMessage}</p>
+            ${summaryHTML}
             <div class="problematic-entities-box" style="width: 300px; margin: 10px; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9; max-height: 200px; overflow-y: auto; display: none;">
                 <h5>Từ khóa không tốt:</h5>
                 <ul id="problematic-entities-list"></ul>
@@ -1352,11 +1038,10 @@ function renderHighlightedContent(container, highlightedMessage) {
             </div> #}
         </div>  
     `;
-
+    attachRemoveHighlightListeners();
     attachAssessmentButtonListeners();
     attachSuggestionButtonListeners();
     
-    {# removeAllButtonsFromProcessedTickets(); #}
 }
 
 function removeAllButtonsFromProcessedTickets() {
@@ -1432,7 +1117,6 @@ async function submitAssessment(assessment) {
         const messageElement = document.querySelector('.message');
         const message = messageElement?.textContent?.trim() || '';
         
-        // Get problematic entities
         const problematicEntitiesList = document.getElementById('problematic-entities-list');
         const problematicEntities = [];
 
@@ -1452,23 +1136,43 @@ async function submitAssessment(assessment) {
         }
 
 
-        const ratingValue = {
+        const nerRating = {
             'positive': 1,
-            'neutral': 0,
+            'neutral':   0,
             'negative': -1
         }[assessment] ?? 0;
 
-        const requestBody = [{
-            service_name: "ner",
-            feedback_type: "rate", 
-            value: ratingValue
-        }];
-
-
-        
+        const nerSuggestions = removedHighlightEntities.map(e => ({
+            entity_string:          e.entity_string,
+            entity_start_position:  e.entity_start_position,
+            entity_end_position:    e.entity_end_position
+        }));
+        const feedbackBody = [
+        {
+            service_name:  "ner",
+            feedback_type: "rate",
+            value:          nerRating
+        },
+        {
+            service_name:  "summary",
+            feedback_type: "usage",
+            value:          1
+        },
+        {
+            service_name:  "summary",
+            feedback_type: "rate",
+            value:          nerRating
+        },
+        {
+            service_name:  "ner",
+            feedback_type: "suggestion",
+            value:         nerSuggestions
+        }
+        ];
+        console.log("📝 Sending feedback:", feedbackBody);
         return await dataFetch(
             `${CONFIG.apiEndpoint}/route/report/feedback`,
-            requestBody,
+            feedbackBody,
             'POST'
         ).then(data => {
             console.log('Assessment submitted successfully:', data);
@@ -1492,9 +1196,7 @@ async function init() {
     }
     try {
         cleanupAllButtons();
-    
         addAIButton();
-        
         window.aiButtonObserver = new MutationObserver(function(mutations) {
             let needsUpdate = false;
             
@@ -1505,15 +1207,10 @@ async function init() {
             });
             
             if (needsUpdate) {
-                // Remove any buttons from already processed tickets first
-                {# removeAllButtonsFromProcessedTickets(); #}
                 
-                // Then add buttons where needed
                 addAIButton();
             }
         });
-        
-        // Start observing the document
         window.aiButtonObserver.observe(document.body, {
             childList: true,
             subtree: true
